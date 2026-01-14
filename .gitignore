@@ -1,0 +1,14 @@
+assets/data/
+assets/weights/
+outputs/
+logs/
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.vscode/
+.idea/
+*.tar.gz
+*.zip
+
+.DS_Store

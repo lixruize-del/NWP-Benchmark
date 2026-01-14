@@ -1,0 +1,27 @@
+name: graphcast_env
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch=2.2.0=py3.10_cuda11.8_cudnn8.7.0_0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.8
+  
+  - xarray
+  - netcdf4
+  - h5py
+  - zarr
+  - dask
+  - cdsapi
+  
+  - pip
+  - pip:
+    - nvidia-modulus
+    - hydra-core
+    - wandb
+    - termcolor
+    - fsspec
+    

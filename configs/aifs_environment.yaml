@@ -1,0 +1,43 @@
+name: aifs_env
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12   # 必须是 3.12，以匹配集群本地的 PyTorch 2.4 Wheel 包
+  - pip
+  - libstdcxx-ng 
+
+  - pip:
+    # 核心计算框架
+    # 注意：Torch 和 FlashAttn 需使用集群本地包安装，这里列出是为了文档完整性
+    - torch>=2.4.0
+    - torchvision>=0.19.0
+    - flash-attn>=2.4.2
+
+    # =AIFS 模型推理全家桶 (严格锁定版本)
+    # 锁定版本兼容旧版模型权重 (.ckpt) 和避免 API 报错
+    - anemoi-inference[plugin]==0.4.9
+    - anemoi-models==0.3.1
+    
+    # 图神经网络依赖
+    # 锁定 2.5.3 以保留 inspector 模块，防止反序列化失败
+    - torch-geometric==2.5.3
+
+    # 数据处理工具
+    - ecmwf-opendata        # 下载原始数据
+    - huggingface_hub        # 下载模型权重
+    - earthkit-data          # 读取 GRIB
+    - earthkit-regrid==0.4.0 # 网格插值 (锁定版本以匹配官方流程)
+    - xarray
+    - dask
+    - numpy
+
+    # NVIDIA 运行时库 (User-Space注入)
+    # 解决集群系统未安装 CUDA 12 Toolkit 导致的 libcudart.so.12 / libcupti 缺失
+    - nvidia-cuda-runtime-cu12
+    - nvidia-cudnn-cu12
+    - nvidia-cublas-cu12
+    - nvidia-cufft-cu12
+    - nvidia-curand-cu12
+    - nvidia-cusolver-cu12
+    - nvidia-cusparse-cu12

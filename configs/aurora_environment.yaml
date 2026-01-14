@@ -1,0 +1,31 @@
+name: aurora_env
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - git
+
+  - numpy<2.0
+  - pandas
+  - scipy
+  - xarray
+  - netcdf4
+  - h5netcdf
+  - dask
+  - matplotlib
+  
+  - pip:
+    - torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+    - torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
+    - torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+    
+    - microsoft-aurora
+    
+    - cdsapi
+    
+    - tqdm
+    - pyyaml

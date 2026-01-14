@@ -1,0 +1,22 @@
+name: pangu_env
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - numpy
+    - pandas
+    - xarray
+    - netcdf4
+    - pydap            # 用于处理 OPeNDAP (如果使用原来的 download_ncep.py)
+    - scipy            # 气象插值通常需要
+    - matplotlib       # 绘图需求
+
+    # 模型推理 (ONNX)
+    - onnx>=1.12.0
+    - onnxruntime-gpu
+    
+    - huggingface_hub  # 下载权重用
+    - ecmwf-opendata   # 复用 AIFS 的数据源下载逻辑
