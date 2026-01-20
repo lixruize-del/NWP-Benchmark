@@ -19,6 +19,7 @@ You can copy this directly into your `README.md` file.
 | **AIFS** | ✅ Ready | 0.25° | GRIB / Zarr |
 | **Pangu-Weather** | ✅ Ready | 0.25° | GRIB / NetCDF |
 | **GraphCast** | 🚧 In Progress | 0.25° | - |
+| **NeuralGCM** | 🚧 In Progress | 0.25° | - |
 
 ## 📂 Directory Structure
 
