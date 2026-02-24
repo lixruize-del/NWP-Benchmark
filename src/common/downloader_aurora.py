@@ -37,13 +37,7 @@ def download_static(client):
         {
             'product_type': 'reanalysis',
             'format': 'netcdf',
-            'variable': [
-                'geopotential', 'land_sea_mask', 'soil_type',
-                'angle_of_sub_gridscale_orography', 
-                'slope_of_sub_gridscale_orography',
-                'standard_deviation_of_filtered_subgrid_orography',
-                'standard_deviation_of_orography'
-            ],
+            'variable': ['geopotential', 'land_sea_mask'],
             # 静态变量相对固定，这里硬编码一个日期即可
             'year': '2023', 'month': '01', 'day': '01', 'time': '00:00',
             'grid': [0.25, 0.25], # 强制 0.25 度

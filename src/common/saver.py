@@ -1,10 +1,16 @@
 import os
 import logging
 import numpy as np
-import torch
 import xarray as xr
 from datetime import datetime, timedelta
 from typing import List, Optional, Union, Dict, Tuple
+
+# Conditionally import torch to handle both JAX and PyTorch environments
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
 
 # Configure logging for the module
 logger = logging.getLogger("Saver")
@@ -17,6 +23,11 @@ grib_para = {
     "u":    {"Name": "U component of wind",           "ShortName": "u",    "Unit": "m s^-1",   "ParaID": 131},
     "v":    {"Name": "V component of wind",           "ShortName": "v",    "Unit": "m s^-1",   "ParaID": 132},
     "q":    {"Name": "Specific humidity",             "ShortName": "q",    "Unit": "kg kg^-1", "ParaID": 133},
+
+    # GRIB2 parameter IDs for these are 244 (ciwc) and 245 (clwc) in neuralgcm
+    "ciwc": {"Name": "Specific cloud ice water content",  "ShortName": "ciwc", "Unit": "kg kg^-1", "ParaID": 244},
+    "clwc": {"Name": "Specific cloud liquid water content", "ShortName": "clwc", "Unit": "kg kg^-1", "ParaID": 245},
+    
     "w":    {"Name": "Vertical velocity",             "ShortName": "w",    "Unit": "Pa s^-1",  "ParaID": 135},
     "u10":  {"Name": "10m U component of wind",       "ShortName": "u10",  "Unit": "m s^-1",   "ParaID": 165},
     "v10":  {"Name": "10m V component of wind",       "ShortName": "v10",  "Unit": "m s^-1",   "ParaID": 166},
@@ -31,6 +42,7 @@ grib_para = {
     "ssr":  {"Name": "Surface net short-wave radiation", "ShortName": "ssr", "Unit": "J m-2",  "ParaID": 176},
     "ssr6h":{"Name": "Surface net short-wave radiation (6h)", "ShortName": "ssr6h", "Unit": "J m-2", "ParaID": 176},
 }
+
 
 class Saver:
     def __init__(self, save_root: str):
@@ -75,7 +87,7 @@ class Saver:
         return raw_name, None, False
 
     def save(self, 
-             data: Union[np.ndarray, torch.Tensor], 
+             data: Union[np.ndarray, object], 
              channel_mapping: List[str], 
              init_time_str: str, 
              lead_time_hours: int,
@@ -95,8 +107,8 @@ class Saver:
             member: Optional ensemble member index for filename differentiation.
         """
         
-        # Ensure input data is in numpy format and remove batch dimension if present
-        if isinstance(data, torch.Tensor):
+        # Ensure input data is in numpy format, handling torch.Tensor if available
+        if HAS_TORCH and isinstance(data, torch.Tensor):
             data = data.detach().cpu().numpy()
         
         if data.ndim == 4:
@@ -179,7 +191,7 @@ class Saver:
                 dims=["time", "isobaricInhPa", "latitude", "longitude"],
                 coords={
                     "time": [valid_time],
-                    "isobaricInhPa": xr.DataArray(sorted_levels, attrs={"units": "hPa"}),
+                    "isobaricInhPa": xr.DataArray(sorted_levels, dims=["isobaricInhPa"], attrs={"units": "hPa"}),
                     "latitude": lat_values,
                     "longitude": lon_values
                 },

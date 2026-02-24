@@ -1,43 +1,62 @@
 import os
 import logging
+from pathlib import Path
+
+# ==============================================================================
+# Environment Setup (Must be before importing huggingface_hub)
+# ==============================================================================
+# Set Hugging Face mirror endpoint for better connectivity in certain regions
+if "HF_ENDPOINT" not in os.environ:
+    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
 from huggingface_hub import hf_hub_download
 
-# 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("AIFS.Weights")
+# ==============================================================================
+# Configuration & Setup
+# ==============================================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S'
+)
+logger = logging.getLogger("AIFS.DownloadWeights")
 
-# 配置路径
-# 当前文件在 src/aifs/, 需要向上回溯三级找到项目根目录
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# AIFS 权重独立存放于 assets/weights/aifs
-WEIGHTS_DIR = os.path.join(BASE_DIR, "assets", "weights", "aifs")
-
-# 确保目录存在
-os.makedirs(WEIGHTS_DIR, exist_ok=True)
+CURRENT_DIR = Path(__file__).resolve().parent
+BASE_DIR = CURRENT_DIR.parent.parent
+WEIGHTS_DIR = BASE_DIR / "assets" / "weights" / "aifs"
 
 def download_weights():
-    filename = "aifs-single-mse-1.0.ckpt"
-    target = os.path.join(WEIGHTS_DIR, filename)
+    """
+    Download AIFS model weights from Hugging Face.
+    Repo: ecmwf/aifs-single-1.0
+    File: aifs-single-mse-1.0.ckpt
+    """
+    # Ensure directory exists
+    WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     
-    if os.path.exists(target):
-        logger.info(f"权重已存在: {target}")
+    filename = "aifs-single-mse-1.0.ckpt"
+    repo_id = "ecmwf/aifs-single-1.0"
+    target_path = WEIGHTS_DIR / filename
+    
+    if target_path.exists():
+        logger.info(f"Weights already exist at: {target_path}")
         return
     
-    logger.info(f"开始下载 AIFS 模型权重至 {WEIGHTS_DIR} ...")
-    
-    # 设置国内镜像加速
-    os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+    logger.info(f"Downloading AIFS weights from {repo_id}...")
+    logger.info(f"Target path: {target_path}")
     
     try:
         hf_hub_download(
-            repo_id="ecmwf/aifs-single-1.0", 
+            repo_id=repo_id, 
             filename=filename, 
             local_dir=WEIGHTS_DIR,
             local_dir_use_symlinks=False
         )
-        logger.info("下载完成")
+        logger.info("Download completed successfully.")
     except Exception as e:
-        logger.error(f"下载失败: {e}")
+        logger.error(f"Download failed: {e}")
+        logger.info("Tip: If download fails, check your network connection or try manually downloading from:")
+        logger.info(f"https://huggingface.co/{repo_id}/blob/main/{filename}")
 
 if __name__ == "__main__":
     download_weights()

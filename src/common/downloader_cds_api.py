@@ -19,7 +19,7 @@ logger = logging.getLogger("DownloadData")
 # Path Configuration
 CURRENT_DIR = Path(__file__).resolve().parent
 BASE_DIR = CURRENT_DIR.parent.parent
-SAVE_DIR = BASE_DIR / "assets" / "data" / "raw"
+SAVE_DIR = BASE_DIR / "assets" / "data" / "era5_neuralgcm"
 DATE_FILE = BASE_DIR / "assets" / "target_date.txt"
 CONFIG_FILE = BASE_DIR / ".cdsapirc"
 
@@ -50,7 +50,7 @@ def load_cds_config():
     return url, key
 
 def download_static(client):
-    """Download static variables"""
+    """Download static variables (Geopotential, Land-sea mask)."""
     target = SAVE_DIR / "static.nc"
     if target.exists():
         logger.info("Static data already exists. Skipping.")
@@ -61,14 +61,8 @@ def download_static(client):
         'reanalysis-era5-single-levels',
         {
             'product_type': 'reanalysis',
-            'data_format': 'netcdf',
-            'variable': [
-                'geopotential', 'land_sea_mask', 'soil_type',
-                'angle_of_sub_gridscale_orography', 
-                'slope_of_sub_gridscale_orography',
-                'standard_deviation_of_filtered_subgrid_orography',
-                'standard_deviation_of_orography'
-            ],
+            'format': 'netcdf',
+            'variable': ['geopotential', 'land_sea_mask'],
             'year': '2023', 'month': '01', 'day': '01', 'time': '00:00',
             'grid': [0.25, 0.25],
         },
@@ -76,35 +70,32 @@ def download_static(client):
     )
 
 def download_surface(client, date_str):
-    """Download surface variables"""
+    """Download surface variables including SST and Sea Ice (required by NeuralGCM)."""
     target = SAVE_DIR / f"surface_{date_str}.nc"
     if target.exists():
         logger.info(f"Surface data for {date_str} already exists. Skipping.")
         return
 
     dt = pd.to_datetime(date_str, format="%Y%m%d%H")
-    # Requires history (T0 and T-6)
+    # NeuralGCM requires history (T0 and T-6)
     times = [dt, dt - pd.Timedelta(hours=6)]
     
     # Extract unique components for CDS request
-    years = sorted(list(set([t.strftime("%Y") for t in times])))
-    months = sorted(list(set([t.strftime("%m") for t in times])))
-    days = sorted(list(set([t.strftime("%d") for t in times])))
-    hours = sorted(list(set([t.strftime("%H:%M") for t in times])))
+    years = list(set([t.strftime("%Y") for t in times]))
+    months = list(set([t.strftime("%m") for t in times]))
+    days = list(set([t.strftime("%d") for t in times]))
+    hours = list(set([t.strftime("%H:%M") for t in times]))
 
     logger.info(f"Downloading surface variables for {date_str}...")
     client.retrieve(
         'reanalysis-era5-single-levels',
         {
             'product_type': 'reanalysis',
-            'data_format': 'netcdf',
+            'format': 'netcdf',
             'variable': [
-                '2m_temperature', 'mean_sea_level_pressure', 'surface_pressure',
+                '2m_temperature', 'mean_sea_level_pressure', 
                 '10m_u_component_of_wind', '10m_v_component_of_wind',
-                '2m_dewpoint_temperature', 'skin_temperature',
-                'total_precipitation', 'total_cloud_cover', 'total_column_water_vapour',
-                'sea_surface_temperature', 'sea_ice_cover',
-                'toa_incident_solar_radiation'
+                'sea_surface_temperature', 'sea_ice_cover' # Critical for NeuralGCM
             ],
             'year': years, 'month': months, 'day': days, 'time': hours,
             'grid': [0.25, 0.25],
@@ -120,25 +111,22 @@ def download_upper(client, date_str):
         return
 
     dt = pd.to_datetime(date_str, format="%Y%m%d%H")
-    # Requires history (T0 and T-6)
     times = [dt, dt - pd.Timedelta(hours=6)]
     
-    # Extract unique components for CDS request
-    years = sorted(list(set([t.strftime("%Y") for t in times])))
-    months = sorted(list(set([t.strftime("%m") for t in times])))
-    days = sorted(list(set([t.strftime("%d") for t in times])))
-    hours = sorted(list(set([t.strftime("%H:%M") for t in times])))
+    years = list(set([t.strftime("%Y") for t in times]))
+    months = list(set([t.strftime("%m") for t in times]))
+    days = list(set([t.strftime("%d") for t in times]))
+    hours = list(set([t.strftime("%H:%M") for t in times]))
 
     logger.info(f"Downloading upper air variables for {date_str}...")
     client.retrieve(
         'reanalysis-era5-pressure-levels',
         {
             'product_type': 'reanalysis',
-            'data_format': 'netcdf',
+            'format': 'netcdf',
             'variable': [
                 'geopotential', 'specific_humidity', 'temperature',
-                'u_component_of_wind', 'v_component_of_wind',
-                'vertical_velocity', 'relative_humidity'
+                'u_component_of_wind', 'v_component_of_wind'
             ],
             'pressure_level': PRESSURE_LEVELS,
             'year': years, 'month': months, 'day': days, 'time': hours,
@@ -148,8 +136,8 @@ def download_upper(client, date_str):
     )
 
 def main():
-    parser = argparse.ArgumentParser(description="Data Downloader")
-    parser.add_argument("--date", type=str, default="2023010112", help="Target date YYYYMMDDHH")
+    parser = argparse.ArgumentParser(description="NeuralGCM Data Downloader")
+    parser.add_argument("--date", type=str, default="2020082218", help="Target date YYYYMMDDHH")
     args = parser.parse_args()
 
     # Update target date record

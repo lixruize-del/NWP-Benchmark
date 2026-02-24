@@ -117,75 +117,90 @@ class Evaluator:
                                gt_path: str, 
                                var_name: str, 
                                level: Optional[int] = None) -> Dict[str, float]:
-        """
-        Calculate metrics for a single prediction file against GT.
-        
-        Args:
-            pred_path: Path to model prediction (.nc).
-            gt_path: Path to ERA5 Ground Truth (.nc).
-            var_name: Variable name to evaluate (e.g., 't2m', 'z').
-            level: Pressure level (int) if applicable.
-            
-        Returns:
-            Dict: Dictionary containing computed metrics (e.g., {'WRMSE': 1.23}).
-        """
         logger.info(f"Evaluating {var_name} (Level: {level})")
         
+        # 1. 加载
         ds_pred = self._load_and_align(pred_path)
         ds_gt = self._load_and_align(gt_path, is_gt=True)
         
-        # Select Variable
+        # 2. 变量选择
+        gt_var_map = {'t2m': '2t', 'z': 'z', 'u': 'u', 'v': 'v', 'msl': 'msl'}
+        gt_var_name = gt_var_map.get(var_name, var_name)
+        
+        if var_name not in ds_pred: return {}
+        if gt_var_name not in ds_gt: return {}
+            
+        da_pred = ds_pred[var_name]
+        da_gt = ds_gt[gt_var_name]
+
+        # 3. 层级选择
+        if level is not None:
+            if 'level' in da_pred.coords: da_pred = da_pred.sel(level=level)
+            if 'level' in da_gt.coords: da_gt = da_gt.sel(level=level)
+
+        # ======================================================================
+        # 🕵️‍♂️ 审计环节：在时间切片之前打印元数据
+        # ======================================================================
+        logger.info(f"--- [AUDIT] Pre-Slicing Metadata ---")
+        logger.info(f"Pred Time Coords: {da_pred.coords.get('time', 'No Time').values}")
+        logger.info(f"GT   Time Coords: {da_gt.coords.get('time', 'No Time').values}")
+        
+        # 4. 时间切片 (原逻辑)
+        if 'time' in da_pred.dims: 
+            da_pred = da_pred.isel(time=0)
+            logger.info("Pred: Selected index 0")
+            
+        if 'time' in da_gt.dims: 
+            # ！！！重点怀疑对象！！！
+            # 我们打印出这里到底选了哪个时间
+            selected_gt = da_gt.isel(time=0)
+            logger.info(f"GT  : Selected index 0 -> Time Value: {selected_gt.time.values}")
+            da_gt = selected_gt
+
+        # ======================================================================
+        # 🕵️‍♂️ 审计环节：在对齐和计算之前
+        # ======================================================================
+        logger.info(f"--- [AUDIT] Alignment Check ---")
+        
+        # A. 检查时间是否匹配
         try:
-            da_pred = ds_pred[var_name]
-            # Handle ERA5 naming mapping (Standard -> ERA5)
-            # You might need a more robust mapping here depending on your GT files
-            gt_var_map = {'t2m': '2t', 'z': 'z', 'u': 'u', 'v': 'v', 'msl': 'msl'}
-            gt_var_name = gt_var_map.get(var_name, var_name)
-            
-            # Check if variable exists in GT
-            if gt_var_name not in ds_gt:
-                # Try finding by standard_name or fallback
-                logger.warning(f"GT variable {gt_var_name} not found. Available: {list(ds_gt.data_vars)}")
-                return {}
-                
-            da_gt = ds_gt[gt_var_name]
+            t_p = pd.to_datetime(da_pred.time.values)
+            t_g = pd.to_datetime(da_gt.time.values)
+            if t_p != t_g:
+                logger.error(f"🚨 TIME MISMATCH DETECTED! Pred({t_p}) vs GT({t_g})")
+                logger.error(f"   You are comparing two different times! This explains the high RMSE.")
+            else:
+                logger.info(f"✅ Time aligned: {t_p}")
+        except Exception:
+            logger.warning("Could not verify time alignment (missing coords?)")
 
-            # Select Level if applicable
-            if level is not None:
-                if 'level' in da_pred.coords:
-                    da_pred = da_pred.sel(level=level)
-                if 'level' in da_gt.coords:
-                    da_gt = da_gt.sel(level=level)
+        # B. 检查坐标范围
+        logger.info(f"Pred Lat: {da_pred.latitude.values[0]:.4f} ... {da_pred.latitude.values[-1]:.4f}")
+        logger.info(f"GT   Lat: {da_gt.latitude.values[0]:.4f} ... {da_gt.latitude.values[-1]:.4f}")
+        
+        # C. 检查对齐操作
+        if da_pred.shape != da_gt.shape:
+            logger.info(f"Grid mismatch detected ({da_pred.shape} vs {da_gt.shape}). Interpolating...")
+            da_pred = da_pred.interp_like(da_gt, method='linear')
+        
+        # D. 检查数值统计 (防止填0或单位错误)
+        p_mean = float(da_pred.mean())
+        g_mean = float(da_gt.mean())
+        logger.info(f"Pred Mean Value: {p_mean:.2f}")
+        logger.info(f"GT   Mean Value: {g_mean:.2f}")
+        if abs(p_mean - g_mean) > 1000:
+             logger.error(f"🚨 HUGE VALUE DIFF! Check units (e.g. m vs m^2/s^2).")
 
-            # --- ALIGNMENT & REGRIDDING ---
-            # Automatically interp Pred to GT grid if different (handles Stormer vs ERA5)
-            if da_pred.shape != da_gt.shape:
-                logger.info(f"Grid mismatch detected. Interpolating Pred {da_pred.shape} to GT {da_gt.shape}...")
-                da_pred = da_pred.interp_like(da_gt, method='linear')
+        # ======================================================================
 
-            # Select first time step if multiple exist
-            if 'time' in da_pred.dims: da_pred = da_pred.isel(time=0)
-            if 'time' in da_gt.dims: da_gt = da_gt.isel(time=-1)
+        # 5. 计算
+        weights = MetricCalculator.compute_latitude_weights(da_gt.latitude)
+        wrmse_val = MetricCalculator.wrmse(da_pred, da_gt, weights)
+        
+        logger.info(f"-> WRMSE: {wrmse_val:.4f}")
+        return {"WRMSE": wrmse_val}
 
-            # Compute Weights
-            weights = MetricCalculator.compute_latitude_weights(da_gt.latitude)
-            
-            # Compute Metric
-            wrmse_val = MetricCalculator.wrmse(da_pred, da_gt, weights)
-            logger.info(f"-> WRMSE: {wrmse_val:.4f}")
-            
-            return {"WRMSE": wrmse_val}
-
-        except Exception as e:
-            logger.error(f"Evaluation failed: {e}")
-            return {}
-
-    def compare_models_visual(self, 
-                              model_paths: Dict[str, str], 
-                              gt_path: str, 
-                              var_name: str, 
-                              level: Optional[int] = None,
-                              save_name: str = "comparison.png"):
+    def compare_models_visual(self, model_paths: Dict[str, str], gt_path: str, var_name: str, level: Optional[int] = None, save_name: str = "comparison.png"):
         """
         Visualize comparison of multiple models against GT for a specific variable.
         

@@ -1,11 +1,3 @@
-This is the updated, comprehensive **README.md**.
-
-I have incorporated **AIFS** and **Pangu-Weather**, updated the **Installation** and **Inference** sections, and clarified the data downloading logic based on your description (using `src/common/downloader.py` vs `downloader_aurora.py`).
-
-You can copy this directly into your `README.md` file.
-
-***
-
 # NWPBench: AI-based Numerical Weather Prediction Benchmark
 
 **NWPBench** is a unified framework for evaluating state-of-the-art AI weather forecasting models (e.g., Stormer, Aurora, GraphCast, Pangu-Weather, AIFS) on standardized datasets.
@@ -14,12 +6,12 @@ You can copy this directly into your `README.md` file.
 
 | Model | Status | Resolution | Input Format |
 | :--- | :--- | :--- | :--- |
-| **Stormer** | ✅ Ready | 1.40625° (128x256) | GRIB / NetCDF |
+| **Stormer** | 🚧 In Progress | 1.40625° (128x256) | GRIB / NetCDF |
 | **Aurora** | ✅ Ready | 0.25° (721x1440) | NetCDF (ERA5) |
 | **AIFS** | ✅ Ready | 0.25° | GRIB / Zarr |
 | **Pangu-Weather** | ✅ Ready | 0.25° | GRIB / NetCDF |
 | **GraphCast** | 🚧 In Progress | 0.25° | - |
-| **NeuralGCM** | 🚧 In Progress | 0.25° | - |
+| **NeuralGCM** | ✅ Ready | 0.25° | - |
 
 ## 📂 Directory Structure
 
@@ -41,6 +33,7 @@ nwpbench/
 │   │   └── saver.py          # Unified NetCDF saver
 │   ├── stormer/              # Stormer implementation
 │   ├── aifs/                 # AIFS implementation
+│   ├── neuralgcm/            # NeuralGCM implementation
 │   ├── pangu/                # Pangu-Weather implementation
 │   └── aurora/               # Aurora implementation
 └── README.md
@@ -50,29 +43,10 @@ nwpbench/
 
 We recommend using **Conda** to manage separate environments for different models due to dependency conflicts (e.g., specific PyTorch/CUDA versions).
 
-### 1. Stormer Environment
+###  Environment
 ```bash
-conda env create -f configs/stormer_environment.yaml
-conda activate stormer
-# Note: Ensure compatible xformers/flash-attn are installed for your GPU.
-```
-
-### 2. Aurora Environment
-```bash
-conda env create -f configs/aurora_environment.yaml
-conda activate aurora_env
-```
-
-### 3. AIFS Environment
-```bash
-conda env create -f configs/aifs_environment.yaml
-conda activate aifs
-```
-
-### 4. Pangu-Weather Environment
-```bash
-conda env create -f configs/pangu_environment.yaml
-conda activate pangu
+conda env create -f configs/nwp_unified.yaml
+conda activate nwp_unified
 ```
 
 ---
@@ -154,3 +128,4 @@ All inference results are saved in **NetCDF** format under `outputs/`.
 *   **Variables**: Output variables include both surface and pressure-level data, complying with CF conventions:
     *   **Surface**: `t2m`, `msl`, `u10`, `v10`, `tp`, etc.
     *   **Upper Air**: `z`, `t`, `u`, `v`, `q` (at levels 50, 100, ..., 1000 hPa).
+```**
