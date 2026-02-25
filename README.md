@@ -20,22 +20,21 @@ The project follows a standardized structure for easy extension:
 ```text
 nwpbench/
 ├── assets/
-│   ├── data/                 # Input data storage
-│   │   ├── raw/              # Common GRIB files (Stormer/AIFS/Pangu)
-│   │   └── era5_aurora/      # NetCDF files for Aurora
-│   └── weights/              # Model checkpoints
-├── configs/                  # Conda environment files
-├── outputs/                  # Inference results (.nc files)
+│   ├── data/
+│   │   └── raw/                 # Unified ERA5 NetCDF download output
+│   ├── target_date.txt          # Latest target date written by downloader
+│   └── weights/                 # Model checkpoints
+├── configs/                     # Conda environment files
+├── outputs/                     # Inference results (.nc files)
 ├── src/
-│   ├── common/               # Shared utilities
-│   │   ├── downloader.py     # Common GRIB downloader (ECMWF Open Data)
-│   │   ├── downloader_aurora.py # Aurora-specific downloader (CDS API)
-│   │   └── saver.py          # Unified NetCDF saver
-│   ├── stormer/              # Stormer implementation
-│   ├── aifs/                 # AIFS implementation
-│   ├── neuralgcm/            # NeuralGCM implementation
-│   ├── pangu/                # Pangu-Weather implementation
-│   └── aurora/               # Aurora implementation
+│   ├── common/
+│   │   ├── downloader_unified.py  # Unified CDS API ERA5 downloader (NetCDF)
+│   │   └── saver.py               # Unified NetCDF saver
+│   ├── stormer/
+│   ├── aifs/
+│   ├── neuralgcm/
+│   ├── pangu/
+│   └── aurora/
 └── README.md
 ```
 
@@ -43,11 +42,64 @@ nwpbench/
 
 We recommend using **Conda** to manage separate environments for different models due to dependency conflicts (e.g., specific PyTorch/CUDA versions).
 
-###  Environment
+### Environment
 ```bash
 conda env create -f configs/nwp_unified.yaml
 conda activate nwp_unified
 ```
+
+### Install `cdsapi`
+```bash
+pip install cdsapi
+```
+
+## 🔐 Configure CDS API (Copernicus)
+
+`src/common/downloader_unified.py` reads CDS credentials in this order:
+
+1. `./.cdsapirc` (repo root)
+2. environment variable `CDSAPI_KEY`
+
+### Option A (recommended): `.cdsapirc` in repo root
+
+Create `/workspace/NWP-Benchmark/.cdsapirc`:
+
+```yaml
+url: https://cds.climate.copernicus.eu/api
+key: <uid>:<api-key>
+```
+
+> Replace `<uid>:<api-key>` with your Copernicus CDS API token.
+
+### Option B: environment variable
+
+```bash
+export CDSAPI_KEY="<uid>:<api-key>"
+```
+
+## ⬇️ Unified ERA5 Download (NetCDF)
+
+Use the unified downloader:
+
+```bash
+python src/common/downloader_unified.py --date 2023010112
+```
+
+### Output location
+
+Downloaded files are saved to:
+
+- `assets/data/raw/static.nc`
+- `assets/data/raw/surface_YYYYMMDDHH.nc`
+- `assets/data/raw/upper_YYYYMMDDHH.nc`
+
+The script also writes target date to:
+
+- `assets/target_date.txt`
+
+> Notes
+> - Download format is NetCDF.
+> - Existing files are skipped automatically.
 
 ---
 
@@ -71,23 +123,16 @@ python src/pangu/download_weights.py
 ```
 
 ### 2. Prepare Data
-Download and preprocess data for a specific date (e.g., `2023010112`).
-*   **Stormer, AIFS, Pangu** use `src/common/downloader.py` (GRIB format).
-*   **Aurora** uses `src/common/downloader_aurora.py` (NetCDF format).
-
-You can run the model-specific prepare scripts, which wrap these downloaders:
+Use the unified downloader first (see section above), then run model-specific prepare scripts when needed:
 
 ```bash
-# For Stormer (Uses common downloader)
+# Unified ERA5 download (NetCDF)
+python src/common/downloader_unified.py --date 2023010112
+
+# Model-specific wrappers (as required)
 python src/stormer/prepare.py --date 2023010112
-
-# For AIFS
 python src/aifs/prepare.py --date 2023010112
-
-# For Pangu-Weather
 python src/pangu/prepare.py --date 2023010112
-
-# For Aurora (Uses Aurora-specific downloader)
 python src/aurora/prepare.py --date 2023010112
 ```
 
@@ -124,8 +169,7 @@ python src/pangu/inference.py --date 2023010112
 
 All inference results are saved in **NetCDF** format under `outputs/`.
 
-*   **File naming convention**: `YYYY-MMDD-LL.nc` (e.g., `2023-0101-06.nc` for a 6h lead time).
-*   **Variables**: Output variables include both surface and pressure-level data, complying with CF conventions:
-    *   **Surface**: `t2m`, `msl`, `u10`, `v10`, `tp`, etc.
-    *   **Upper Air**: `z`, `t`, `u`, `v`, `q` (at levels 50, 100, ..., 1000 hPa).
-```**
+- **File naming convention**: `YYYY-MMDD-LL.nc` (e.g., `2023-0101-06.nc` for a 6h lead time).
+- **Variables**: Output variables include both surface and pressure-level data, complying with CF conventions:
+  - **Surface**: `t2m`, `msl`, `u10`, `v10`, `tp`, etc.
+  - **Upper Air**: `z`, `t`, `u`, `v`, `q` (at levels 50, 100, ..., 1000 hPa).
