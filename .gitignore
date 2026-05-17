@@ -1,0 +1,72 @@
+# --- IDE / editor ---
+.cursor/
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# --- Internal / planning docs (cluster paths, audit notes; use README for public docs) ---
+docs/
+
+# --- Large artifacts & run outputs (do not commit) ---
+nwp_outputs/
+outputs/
+results/
+data/**
+!data/tc/
+!data/tc/**
+tc_eval_results/
+reports/
+io_bench_local/
+wzb_nips2026/
+
+# --- Run metadata (often embed absolute forecast/GT paths) ---
+**/meta.json
+**/meta_*.json
+**/batch_meta.json
+**/metadata.json
+**/gt_cache_meta.json
+**/case_meta.json
+**/step1_fused_meta.json
+
+# --- Wheels / vendored binaries ---
+*.whl
+
+# --- Local logs & internal notes (may contain paths / credentials) ---
+WORKLOG.md
+V2_MINIMAL_EXECUTION.md
+V2_FILES_GUIDE.md
+*.log
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+
+# --- Notebook checkpoints ---
+.ipynb_checkpoints/
+
+# --- Spectra / analysis caches (regenerable) ---
+*.pkl

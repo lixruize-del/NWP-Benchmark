@@ -1,0 +1,17 @@
+# Minimal dependencies for run_large_scale.py and common utilities.
+# Install PyTorch / ONNX Runtime with CUDA matching your cluster images.
+numpy>=1.22
+pandas>=1.5
+xarray>=2023.1
+netCDF4>=1.6
+onnxruntime-gpu>=1.16; platform_system != "Darwin"
+onnxruntime>=1.16; platform_system == "Darwin"
+torch>=2.0
+torchvision>=0.15
+
+# Optional: scripts/CHCNh_process_new.py (joblib cache), scripts/downloader.py (NOAA GHCNh)
+# joblib
+# tqdm
+# requests
+# beautifulsoup4
+# urllib3
