@@ -23,7 +23,7 @@ Install **PyTorch** and **ONNX Runtime** builds that match your GPU/CUDA stack (
 
 ## 2. Inference data
 
-**Dataset paths for this release are not bundled in the repo; they will be published separately.** After download, point `--era5_root` / station / TC paths in the commands below to your local layout.
+**Dataset paths for this release are not bundled in the repo; they will be published separately soon.** After download, point `--era5_root` / station / TC paths in the commands below to your local layout.
 
 | Purpose | What you need |
 |---------|----------------|
@@ -33,8 +33,6 @@ Install **PyTorch** and **ONNX Runtime** builds that match your GPU/CUDA stack (
 | Typhoon evaluation | IBTrACS CSV (default in repo: `data/tc/ibtracs.last3years.list.v04r01.csv`) |
 | Station evaluation | Processed station obs + station lat/lon JSON |
 | Heatwave / coldwave | ERA5 2 m temperature climate files for baselines; pre-built p90/p10 NetCDF optional |
-
-NPY file naming and per-model roots: [docs/model_root_matrix.md](docs/model_root_matrix.md).
 
 ---
 
@@ -96,10 +94,10 @@ All evaluation assumes **saved forecasts** under
 
 | Topic | Script |
 |-------|--------|
-| **Station** (站点) | `scripts/eval_station_metrics_from_saved_ifs_nc.py` |
-| **Typhoon / TC** (台风) | `scripts/evaluate_tc_by_storm.py` |
-| **Heatwave** (热浪) | `scripts/run_heatwave_object_eval_batch_v2.py` (after p90 baseline) |
-| **Cold surge** (寒潮) | Same batch driver with p10 baseline and `--event-type coldwave` |
+| **Station**  | `scripts/eval_station_metrics_from_saved_ifs_nc.py` |
+| **Typhoon / TC**  | `scripts/evaluate_tc_by_storm.py` |
+| **Heatwave**  | `scripts/run_heatwave_object_eval_batch_v2.py` (after p90 baseline) |
+| **Cold surge**  | Same batch driver with p10 baseline and `--event-type coldwave` |
 
 ### Station
 
@@ -140,7 +138,7 @@ python scripts/run_heatwave_object_eval_batch_v2.py \
   --out-root /path/to/heatwave_object_v2_metrics
 ```
 
-### Cold surge (寒潮)
+### Cold surge 
 
 Use a **p10** baseline from the same baseline script (`--percentiles 10`), then:
 
@@ -154,10 +152,3 @@ python scripts/run_heatwave_object_eval_batch_v2.py \
   --start-date 2025-06-01 --end-date 2025-10-30 \
   --out-root /path/to/coldwave_object_v2_metrics
 ```
-
----
-
-## More detail
-
-- Model / root matrix: [docs/model_root_matrix.md](docs/model_root_matrix.md)
-- v2 runners: [V2_FILES_GUIDE.md](V2_FILES_GUIDE.md)
